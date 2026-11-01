@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cloudpilot
+      POSTGRES_USER: cloudpilot
+      POSTGRES_PASSWORD: cloudpilot-local-only
+    ports:
+      - "5432:5432"
+    volumes:
+      - cloudpilot-postgres:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      CLOUDPILOT_DATABASE_URL: postgresql+psycopg://cloudpilot:cloudpilot-local-only@postgres:5432/cloudpilot
+      CLOUDPILOT_SECURE_COOKIES: "false"
+      CLOUDPILOT_ADMIN_EMAIL: ${CLOUDPILOT_ADMIN_EMAIL:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  cloudpilot-postgres:

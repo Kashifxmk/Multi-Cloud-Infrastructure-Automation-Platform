@@ -38,6 +38,7 @@ export type CurrentUser = {
   full_name: string;
   email: string;
   is_verified: boolean;
+  is_admin: boolean;
 };
 
 export const getCurrentUser = () => request<CurrentUser>("/api/auth/me");
@@ -152,3 +153,12 @@ export const approveDeployment = (id: string) =>
 
 export const destroyDeployment = (id: string) =>
   request<{ status: string }>(`/api/deployments/${id}/destroy`, { method: "POST" });
+
+export type AdminOverview = {
+  mode: string;
+  metrics: Record<string, number>;
+};
+
+export const getAdminOverview = () => request<AdminOverview>("/api/admin/overview");
+export const getAdminUsers = () => request<{ users: Array<{ id: string; full_name: string; email: string; is_active: boolean; is_admin: boolean }> }>("/api/admin/users");
+export const getAdminAudit = () => request<{ audit_logs: Array<{ id: string; action: string; details: Record<string, unknown>; created_at: string }> }>("/api/admin/audit");

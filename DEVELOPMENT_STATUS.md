@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 9 - Simulated deployment lifecycle.
+Phase 11 - Local packaging and final validation.
 
 ## Completed
 
@@ -56,11 +56,25 @@ Phase 9 - Simulated deployment lifecycle.
 - Sample resource IDs, deployment logs, and JSON reports are persisted locally.
 - React deployment history modal added with explicit approval and destroy
   confirmation.
+- Backend-enforced admin authorization added.
+- Admin overview, user list, and audit-log endpoints added.
+- Local admin bootstrap supported with `CLOUDPILOT_ADMIN_EMAIL`.
+- React admin console added for authorized users.
+- Docker Compose packaging added for PostgreSQL, FastAPI, and the React
+  frontend.
+- SQLite remains available for lightweight PowerShell development without
+  containers.
 
 ## Test results
 
-- Python unit and API tests: `22 passed` with `python -m pytest -q`.
+- Python unit and API tests: `24 passed` with `python -m pytest -q`.
+- Frontend Vitest tests: `1 passed` with `npm test`.
 - Frontend production build: passed with `npm run build`.
+- Python compilation: passed with `python -m compileall -q backend core main.py`.
+- Frontend production build: passed with `npm run build`.
+- Health endpoint checks database connectivity and returns HTTP 503 when the
+  configured database is unavailable.
+- Container startup initializes the local MVP schema before serving API traffic.
 - Existing sample configuration validation remains supported.
 - No cloud credentials or paid cloud resources are required for Phase 9.
 
@@ -84,12 +98,19 @@ Phase 9 - Simulated deployment lifecycle.
 - Generated Terraform is a preview and uses simplified provider resource
   examples; it is not an authenticated provider plan.
 - Deployments are simulated only and do not create or modify cloud resources.
+- Admin analytics are local database metrics; platform billing and production
+  monitoring integrations are not implemented.
 - Use the same hostname for the frontend and backend (`localhost` with
   `localhost`, or `127.0.0.1` with `127.0.0.1`) so browser cookies are sent.
 - `npm install` reports transitive dependency audit findings; no forced
   breaking upgrade was applied.
+- Docker Compose configuration validation passed. Docker image startup was not
+  run because Docker Desktop's Linux engine was unavailable on the validation
+  machine.
+- Versioned production migrations are still required before production use.
 
 ## Next approval gate
 
-Before Phase 10, review the simulated deployment lifecycle and approve admin
-dashboard and usage analytics work.
+The local MVP is ready for review. Production readiness still requires
+security hardening, real provider adapters, migrations, and operational
+testing.

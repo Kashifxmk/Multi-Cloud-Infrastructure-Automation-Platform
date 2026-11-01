@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from pydantic import BaseModel, Field
 
 from core.config_validator import validate_config
 from core.provider_manager import terraform_directory
-from .database import init_db
+from .database import engine, init_db
 from .routes_auth import router as auth_router
 from .routes_accounts import router as accounts_router
 from .routes_templates import router as templates_router
@@ -16,6 +17,7 @@ from .routes_pricing import router as pricing_router
 from .routes_architecture import router as architecture_router
 from .routes_terraform import router as terraform_router
 from .routes_deployments import router as deployments_router
+from .routes_admin import router as admin_router
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +42,7 @@ app.include_router(pricing_router)
 app.include_router(architecture_router)
 app.include_router(terraform_router)
 app.include_router(deployments_router)
+app.include_router(admin_router)
 
 
 class ValidationRequest(BaseModel):
@@ -48,7 +51,12 @@ class ValidationRequest(BaseModel):
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "mode": "local-demo"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Database unavailable") from error
+    return {"status": "ok", "mode": "local-demo", "database": "ok"}
 
 
 @app.get("/api/demo/state")

@@ -111,3 +111,39 @@ workflow.
 Select **Deployments** to create a local plan, explicitly approve simulated
 provisioning, view generated resource IDs, and simulate destroy. Reports are
 written to `reports/`. No cloud resources are created.
+
+### Admin console
+
+Set `CLOUDPILOT_ADMIN_EMAIL` before registering a local account to bootstrap
+that account as an administrator. If the account already exists, restarting the
+backend with the matching email promotes it in local development. The
+dashboard then shows **Admin console**.
+Admin routes enforce authorization in the backend; frontend navigation alone
+cannot grant access.
+
+## Docker Compose
+
+For a repeatable local stack with PostgreSQL:
+
+```powershell
+$env:CLOUDPILOT_ADMIN_EMAIL="admin@example.com"
+docker compose up --build
+```
+
+Open [http://localhost:5173](http://localhost:5173). The API is available at
+[http://localhost:8000/docs](http://localhost:8000/docs). Stop the stack with
+`docker compose down`; add `-v` only if you intentionally want to remove the
+local PostgreSQL volume.
+
+Docker Compose is optional. The lower-resource Windows workflow remains:
+
+```powershell
+python -m backend.run
+cd frontend
+npm run dev
+```
+
+The SQLite database is intended for lightweight development. Docker Compose
+uses PostgreSQL through `CLOUDPILOT_DATABASE_URL`; the backend initializes its
+local MVP schema before serving requests. This is not a replacement for
+versioned production migrations.

@@ -31,7 +31,13 @@ router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
 
 def user_response(user: User) -> UserResponse:
-    return UserResponse(id=user.id, full_name=user.full_name, email=user.email, is_verified=user.is_verified)
+    return UserResponse(
+        id=user.id,
+        full_name=user.full_name,
+        email=user.email,
+        is_verified=user.is_verified,
+        is_admin=user.is_admin,
+    )
 
 
 @router.post("/register", response_model=UserResponse, status_code=201)

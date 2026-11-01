@@ -92,7 +92,12 @@ def create_user(db: Session, full_name: str, email: str, password: str) -> User:
     normalized_email = email.strip().lower()
     if db.scalar(select(User).where(User.email == normalized_email)):
         raise HTTPException(status_code=409, detail="Email is already registered")
-    user = User(full_name=full_name.strip(), email=normalized_email, password_hash=hash_password(password))
+    user = User(
+        full_name=full_name.strip(),
+        email=normalized_email,
+        password_hash=hash_password(password),
+        is_admin=normalized_email == os.getenv("CLOUDPILOT_ADMIN_EMAIL", "").strip().lower(),
+    )
     organization = Organization(name=f"{full_name.strip()}'s workspace")
     db.add_all([user, organization])
     db.flush()

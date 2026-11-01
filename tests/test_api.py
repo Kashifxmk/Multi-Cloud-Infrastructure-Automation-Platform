@@ -10,6 +10,7 @@ def test_health():
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["mode"] == "local-demo"
+    assert response.json()["database"] == "ok"
 
 
 def test_dashboard_uses_explicit_empty_state():

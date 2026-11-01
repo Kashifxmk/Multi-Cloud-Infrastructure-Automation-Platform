@@ -1,7 +1,7 @@
 import os
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -27,3 +27,10 @@ def init_db() -> None:
     from . import models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    admin_email = os.getenv("CLOUDPILOT_ADMIN_EMAIL", "").strip().lower()
+    if admin_email:
+        with SessionLocal() as db:
+            user = db.scalar(select(models.User).where(models.User.email == admin_email))
+            if user and not user.is_admin:
+                user.is_admin = True
+                db.commit()

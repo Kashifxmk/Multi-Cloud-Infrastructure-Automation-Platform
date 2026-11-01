@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Boxes, Cloud, LayoutDashboard, LogIn, Menu, Settings, ShieldCheck, UserPlus } from "lucide-react";
-import { approveDeployment, Architecture, comparePricing, connectCloudAccount, createDeploymentPlan, CurrentUser, destroyDeployment, disconnectCloudAccount, generateArchitecture, generateTerraformPreview, getCloudAccounts, getCurrentUser, getDashboard, getDeployments, getTemplates, login, logout, register, saveInfrastructureConfiguration, verifyCloudAccount, InfrastructureTemplate } from "./api";
+import { approveDeployment, Architecture, comparePricing, connectCloudAccount, createDeploymentPlan, CurrentUser, destroyDeployment, disconnectCloudAccount, generateArchitecture, generateTerraformPreview, getAdminAudit, getAdminOverview, getAdminUsers, getCloudAccounts, getCurrentUser, getDashboard, getDeployments, getTemplates, login, logout, register, saveInfrastructureConfiguration, verifyCloudAccount, InfrastructureTemplate } from "./api";
 import ReactFlow, { Background, Controls, Edge, MiniMap, Node, useEdgesState, useNodesState } from "reactflow";
 
 type AuthMode = "login" | "register";
@@ -60,6 +60,7 @@ function DashboardPage({
   const [architectureOpen, setArchitectureOpen] = useState(false);
   const [terraformOpen, setTerraformOpen] = useState(false);
   const [deploymentsOpen, setDeploymentsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const data = dashboard.data;
   const metrics = data?.metrics;
 
@@ -75,6 +76,7 @@ function DashboardPage({
           <a onClick={() => setArchitectureOpen(true)}><ShieldCheck size={18} /> Architecture</a>
           <a onClick={() => setTerraformOpen(true)}><Settings size={18} /> Terraform preview</a>
           <a onClick={() => setDeploymentsOpen(true)}><Boxes size={18} /> Deployments</a>
+          {user?.is_admin && <a onClick={() => setAdminOpen(true)}><ShieldCheck size={18} /> Admin console</a>}
           <a><Settings size={18} /> Settings</a>
         </nav>
         <div className="sidebar-footer">LOCAL MVP<br /><span>No cloud account connected</span></div>
@@ -112,10 +114,19 @@ function DashboardPage({
         {architectureOpen && <ArchitectureModal onClose={() => setArchitectureOpen(false)} />}
         {terraformOpen && <TerraformModal onClose={() => setTerraformOpen(false)} />}
         {deploymentsOpen && <DeploymentsModal user={user} onAuth={onAuth} onClose={() => setDeploymentsOpen(false)} />}
+        {adminOpen && user?.is_admin && <AdminModal onClose={() => setAdminOpen(false)} />}
         <section className="panel quick-actions"><div className="panel-heading"><div><h3>Start with CloudPilot</h3><p>A guided path from idea to infrastructure plan.</p></div></div><div className="action-cards"><Action icon={<Cloud />} title="Connect an account" text="Simulate AWS, GCP or Azure connection." /><Action icon={<Boxes />} title="Browse templates" text="Choose a ready-made infrastructure blueprint." /><Action icon={<BarChart3 />} title="Compare costs" text="Review provider estimates before deployment." /></div></section>
       </main>
     </div>
   );
+}
+
+function AdminModal({ onClose }: { onClose: () => void }) {
+  const overview = useQuery({ queryKey: ["admin-overview"], queryFn: getAdminOverview });
+  const users = useQuery({ queryKey: ["admin-users"], queryFn: getAdminUsers });
+  const audit = useQuery({ queryKey: ["admin-audit"], queryFn: getAdminAudit });
+  const metrics = overview.data?.metrics ?? {};
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide" onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">ADMIN CONSOLE · LOCAL</p><h3>Platform overview</h3><p className="muted small">Backend-authorized analytics for this local instance.</p></div><button className="close-button" onClick={onClose}>×</button></div>{overview.isError ? <div className="alert error">Administrator access is required.</div> : <><div className="admin-metrics">{Object.entries(metrics).map(([key, value]) => <div className="admin-metric" key={key}><span>{key.replace(/_/g, " ")}</span><strong>{value}</strong></div>)}</div><div className="admin-section"><h4>Users</h4>{users.data?.users.map((user) => <div className="admin-row" key={user.id}><span><strong>{user.full_name}</strong> · {user.email}</span><small>{user.is_admin ? "Admin" : "Member"} · {user.is_active ? "Active" : "Inactive"}</small></div>)}</div><div className="admin-section"><h4>Audit log</h4>{audit.data?.audit_logs.length ? audit.data.audit_logs.map((entry) => <div className="admin-row" key={entry.id}><span>{entry.action}</span><small>{String(entry.created_at ?? "")}</small></div>) : <p className="muted small">No audit events recorded yet.</p>}</div></>}</div></div>;
 }
 
 function DeploymentsModal({ user, onAuth, onClose }: { user: CurrentUser | null; onAuth: () => void; onClose: () => void }) {

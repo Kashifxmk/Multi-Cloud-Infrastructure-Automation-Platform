@@ -30,3 +30,4 @@ class UserResponse(BaseModel):
     full_name: str
     email: str
     is_verified: bool
+    is_admin: bool
