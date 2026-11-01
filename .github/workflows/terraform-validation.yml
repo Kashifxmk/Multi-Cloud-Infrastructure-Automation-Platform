@@ -1,0 +1,18 @@
+name: Terraform validation
+on:
+  push:
+  pull_request:
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        provider: [aws, azure, gcp]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+        working-directory: providers/${{ matrix.provider }}
+      - run: terraform validate
+        working-directory: providers/${{ matrix.provider }}

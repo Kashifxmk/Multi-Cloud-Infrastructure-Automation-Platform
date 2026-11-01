@@ -1,0 +1,17 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.py[cod]
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+reports/*.json
+cloudpilot.db
+cloudpilot.db-*
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.pem
+*.key

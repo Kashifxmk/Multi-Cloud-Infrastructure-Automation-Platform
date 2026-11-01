@@ -1,0 +1,1 @@
+"""CloudPilot API application."""

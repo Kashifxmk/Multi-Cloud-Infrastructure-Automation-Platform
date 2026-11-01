@@ -1,0 +1,16 @@
+project:
+  name: cloudpilot
+  environment: production
+cloud:
+  provider: azure
+  region: Central India
+compute:
+  enabled: false
+network:
+  enabled: true
+  create_vpc: true
+security:
+  allow_ssh: false
+  allowed_ssh_cidrs: []
+storage:
+  enabled: false

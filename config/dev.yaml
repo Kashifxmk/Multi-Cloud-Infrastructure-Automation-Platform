@@ -1,0 +1,22 @@
+project:
+  name: cloudpilot
+  environment: development
+cloud:
+  provider: gcp
+  region: asia-south1
+compute:
+  enabled: false
+  name: cloudpilot-vm
+  machine_type: e2-medium
+  os: ubuntu-22.04
+network:
+  enabled: true
+  create_vpc: true
+security:
+  allow_ssh: false
+  allowed_ssh_cidrs: []
+storage:
+  enabled: false
+tags:
+  project: cloudpilot
+  managed_by: terraform
