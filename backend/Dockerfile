@@ -7,4 +7,4 @@ COPY . .
 COPY core ./core
 
 EXPOSE 8000
-CMD ["sh", "-c", "python -c 'from backend.database import init_db; init_db()' && uvicorn backend.app:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.app:app --host 0.0.0.0 --port 8000"]

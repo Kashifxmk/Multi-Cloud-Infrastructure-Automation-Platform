@@ -85,6 +85,12 @@ sample AWS, GCP, or Azure metadata, run simulated verification, and disconnect
 the account. No passwords, permanent keys, cloud APIs, or real resources are
 used. The API routes are under `/api/cloud-accounts`.
 
+The default provider mode is simulation. AWS read-only STS verification can be
+enabled explicitly with `CLOUDPILOT_PROVIDER_MODE=real`; it uses the AWS
+default credential chain, an optional profile, or an optional IAM role ARN.
+The API never accepts permanent AWS secret keys. Azure and GCP remain
+simulation-only until their provider adapters are added.
+
 ### Infrastructure templates
 
 Select **Browse templates** in the React dashboard to open the local template

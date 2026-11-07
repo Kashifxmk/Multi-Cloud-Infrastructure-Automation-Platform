@@ -31,7 +31,10 @@ def test_simulated_account_lifecycle():
         assert created.status_code == 201
         account_id = created.json()["account"]["id"]
         assert created.json()["account"]["status"] == "simulated-connected"
-        assert client.post(f"/api/cloud-accounts/{account_id}/verify").status_code == 200
+        verified = client.post(f"/api/cloud-accounts/{account_id}/verify")
+        assert verified.status_code == 200
+        assert verified.json()["verification"]["provider"] == "aws"
+        assert verified.json()["verification"]["simulation"] is True
         assert len(client.get("/api/cloud-accounts").json()["accounts"]) == 1
         assert client.delete(f"/api/cloud-accounts/{account_id}").status_code == 204
 

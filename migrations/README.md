@@ -10,5 +10,7 @@ The same models support PostgreSQL by setting, for example:
 CLOUDPILOT_DATABASE_URL=postgresql+psycopg://user:password@localhost/cloudpilot
 ```
 
-Alembic migration scripts will be added before introducing schema-changing
-features. Until then, do not use `create_all` against a production database.
+Alembic is configured in `alembic.ini` with the initial schema migration under
+`migrations/versions/`. Local SQLite startup may still use `create_all` for
+convenience; production and Compose deployments should run `alembic upgrade
+head` before starting the API.

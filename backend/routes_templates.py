@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user
 from .database import get_db
-from .models import InfrastructureConfiguration, InfrastructureTemplate, OrganizationMember, User
+from .authorization import organization_id_for_user
+from .models import InfrastructureConfiguration, InfrastructureTemplate, User
 
 
 router = APIRouter(prefix="/api/infrastructure", tags=["infrastructure"])
@@ -79,13 +80,6 @@ TEMPLATES: list[dict[str, Any]] = [
 class ConfigurationRequest(BaseModel):
     template_slug: str = Field(min_length=2)
     configuration: dict[str, Any]
-
-
-def organization_id_for_user(db: Session, user: User) -> str:
-    membership = db.scalar(select(OrganizationMember).where(OrganizationMember.user_id == user.id))
-    if not membership:
-        raise HTTPException(status_code=403, detail="No organization membership found")
-    return membership.organization_id
 
 
 def seed_templates(db: Session) -> None:

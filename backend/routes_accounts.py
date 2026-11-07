@@ -1,22 +1,26 @@
 from datetime import datetime, timezone
+import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import get_current_user
 from .database import get_db
-from .models import CloudAccount, OrganizationMember, User
+from .authorization import organization_id_for_user
+from .cloud.registry import SUPPORTED_PROVIDERS
+from .cloud.verification import verify_account as verify_provider_account
+from .models import CloudAccount, User
 
 
 router = APIRouter(prefix="/api/cloud-accounts", tags=["cloud accounts"])
-SUPPORTED_PROVIDERS = {"aws", "gcp", "azure"}
 SETUP_INSTRUCTIONS = {
-    "aws": "Demo only: enter an AWS account label. Real IAM role verification will be added later.",
-    "gcp": "Demo only: enter a GCP project label. Real workload identity verification will be added later.",
-    "azure": "Demo only: enter an Azure subscription label. Real Entra verification will be added later.",
+    "aws": "Simulation: enter an AWS account label. Production adapter will use read-only IAM role verification.",
+    "gcp": "Simulation: enter a GCP project label. Production adapter will use workload identity verification.",
+    "azure": "Simulation: enter an Azure subscription label. Production adapter will use Entra verification.",
 }
 
 
@@ -24,18 +28,10 @@ class CloudAccountRequest(BaseModel):
     provider: str
     display_name: str = Field(min_length=2, max_length=160)
     account_identifier: str = Field(min_length=2, max_length=160)
-
-
-def organization_id_for_user(db: Session, user: User) -> str:
-    membership = db.scalar(
-        select(OrganizationMember).where(
-            OrganizationMember.user_id == user.id,
-            OrganizationMember.role.in_(["owner", "admin", "developer", "read-only"]),
-        )
-    )
-    if not membership:
-        raise HTTPException(status_code=403, detail="No organization membership found")
-    return membership.organization_id
+    auth_method: Literal["default-chain", "profile", "role"] = "default-chain"
+    role_arn: str | None = Field(default=None, max_length=2048)
+    external_id: str | None = Field(default=None, max_length=256)
+    profile: str | None = Field(default=None, max_length=128)
 
 
 def serialize(account: CloudAccount) -> dict[str, Any]:
@@ -84,9 +80,23 @@ def connect_account(
         organization_id=organization_id,
         provider=provider,
         display_name=request.display_name,
-        status="simulated-connected",
+        status=(
+            "simulated-connected"
+            if os.getenv("CLOUDPILOT_PROVIDER_MODE", "simulated").strip().lower() == "simulated"
+            else "pending-verification"
+        ),
         metadata_json={
             "account_identifier": request.account_identifier,
+            "auth_method": request.auth_method,
+            "auth_config": {
+                key: value
+                for key, value in {
+                    "role_arn": request.role_arn,
+                    "external_id": request.external_id,
+                    "profile": request.profile,
+                }.items()
+                if value
+            },
             "verified_at": datetime.now(timezone.utc).isoformat(),
             "simulation": True,
         },
@@ -112,14 +122,33 @@ def verify_account(
     )
     if not account:
         raise HTTPException(status_code=404, detail="Cloud account not found")
-    account.status = "simulated-connected"
+    account_identifier = str(account.metadata_json.get("account_identifier", ""))
+    try:
+        verification = verify_provider_account(
+            account.provider,
+            account_identifier,
+            account.metadata_json.get("auth_config", {}),
+        )
+    except (RuntimeError, ValueError) as error:
+        account.status = "verification-failed"
+        db.commit()
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    account.status = "simulated-connected" if verification["simulation"] else "connected"
     account.metadata_json = {
         **account.metadata_json,
+        "identity": verification["identity"],
+        "regions": verification["regions"],
+        "capabilities": verification["capabilities"],
         "verified_at": datetime.now(timezone.utc).isoformat(),
-        "simulation": True,
+        "simulation": verification["simulation"],
     }
     db.commit()
-    return {"mode": "simulated", "status": account.status, "message": "Simulated verification passed"}
+    return {
+        "mode": "simulated",
+        "status": account.status,
+        "message": "Simulated provider verification passed",
+        "verification": verification,
+    }
 
 
 @router.delete("/{account_id}", status_code=204)

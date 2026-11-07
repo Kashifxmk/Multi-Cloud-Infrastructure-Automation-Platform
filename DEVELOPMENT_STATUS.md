@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 11 - Local packaging and final validation.
+Phase 14 - AWS read-only adapter.
 
 ## Completed
 
@@ -64,6 +64,22 @@ Phase 11 - Local packaging and final validation.
   frontend.
 - SQLite remains available for lightweight PowerShell development without
   containers.
+- Shared organization membership lookup extracted into
+  `backend/authorization.py`.
+- Organization membership uniqueness enforced at the database model and
+  migration level.
+- Alembic configuration and initial schema migration added.
+- Docker Compose now waits for PostgreSQL health before starting the backend.
+- PostgreSQL startup uses `alembic upgrade head`; SQLite remains the only
+  backend mode that creates tables automatically.
+- Provider adapter contract added with explicit simulated AWS, Azure, and GCP
+  implementations.
+- Account verification now uses the provider registry and persists normalized
+  identity, regions, capabilities, and simulation status.
+- AWS read-only STS adapter added behind explicit
+  `CLOUDPILOT_PROVIDER_MODE=real`; it uses the default credential chain,
+  optional profile, or optional IAM role assumption and never accepts secret
+  keys through the API.
 
 ## Test results
 
@@ -84,8 +100,8 @@ Phase 11 - Local packaging and final validation.
   limiting, CSRF strategy for cross-site deployments, and secret management
   still require hardening.
 - Development email links are intentionally emitted to backend logs.
-- SQLite auto-creates the local schema; Alembic production migrations are not
-  yet wired.
+- SQLite auto-creates the local schema; PostgreSQL deployments use Alembic
+  migrations before API startup.
 - The plan endpoint is a preview and deliberately does not execute Terraform.
 - The new frontend includes dashboard, account, template, wizard, pricing,
   architecture, and simulated deployment foundations.
@@ -107,10 +123,10 @@ Phase 11 - Local packaging and final validation.
 - Docker Compose configuration validation passed. Docker image startup was not
   run because Docker Desktop's Linux engine was unavailable on the validation
   machine.
-- Versioned production migrations are still required before production use.
+- Provider authentication, real provisioning, and full RBAC remain future
+  phases.
 
-## Next approval gate
+## Next development gate
 
-The local MVP is ready for review. Production readiness still requires
-security hardening, real provider adapters, migrations, and operational
-testing.
+Next phase: Azure Entra and GCP workload-identity read-only adapters, retaining
+simulation mode for credential-free testing.

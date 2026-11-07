@@ -26,7 +26,8 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     from . import models  # noqa: F401
 
-    Base.metadata.create_all(bind=engine)
+    if DATABASE_URL.startswith("sqlite"):
+        Base.metadata.create_all(bind=engine)
     admin_email = os.getenv("CLOUDPILOT_ADMIN_EMAIL", "").strip().lower()
     if admin_email:
         with SessionLocal() as db:

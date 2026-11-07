@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user
 from .database import get_db
-from .models import Deployment, DeploymentLog, DeploymentResource, OrganizationMember, User
+from .authorization import organization_id_for_user
+from .models import Deployment, DeploymentLog, DeploymentResource, User
 from .terraform_generator import generate_files
 
 
@@ -23,13 +24,6 @@ REPORTS = ROOT / "reports"
 class DeploymentRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     configuration: dict[str, Any]
-
-
-def organization_id_for_user(db: Session, user: User) -> str:
-    membership = db.scalar(select(OrganizationMember).where(OrganizationMember.user_id == user.id))
-    if not membership:
-        raise HTTPException(status_code=403, detail="No organization membership found")
-    return membership.organization_id
 
 
 def deployment_response(deployment: Deployment, resources: list[DeploymentResource]) -> dict[str, Any]:
