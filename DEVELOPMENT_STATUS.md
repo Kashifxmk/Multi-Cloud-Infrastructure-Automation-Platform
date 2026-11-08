@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 14 - AWS read-only adapter.
+Phase 32 - Operations UI consolidation.
 
 ## Completed
 
@@ -43,6 +43,33 @@ Phase 14 - AWS read-only adapter.
   sessions through refreshes, and provides sign-out.
 - Fixed browser session persistence when using `localhost` by deriving the API
   host from the browser hostname, keeping frontend and cookie hosts consistent.
+- Added dark-first Command Center layout with collapsible sidebar, global
+  search affordance, theme toggle, local snapshot filters, KPI panels, and
+  provider overview cards.
+- Command Center metrics avoid fabricated live-cloud claims; unavailable
+  monitoring and billing data is shown as unavailable or explicitly estimated.
+- Added Discovery workspace with searchable provider filtering, account inventory,
+  verification state, regions, capabilities, machine types, and selected-account
+  detail drawer backed by persisted cloud-account metadata.
+- Added searchable and category-filtered provisioning marketplace with provider
+  badges, resource counts, difficulty, and estimated setup time.
+- Improved configuration wizard step labels, input guards, save error handling,
+  and explicit credential-free local configuration messaging.
+- Added FinOps comparison summary with lowest estimate, provider count, annual
+  range, per-provider hourly pricing, recommendation marker, and expandable
+  assumptions.
+- Added visible pricing error handling and numeric input guards while retaining
+  explicit local-fixture labeling.
+- Added topology summary counts, network/compute/data legend, color-coded nodes,
+  clickable component inspector, and visible generation errors.
+- Preserved explicit local-preview status; topology remains configuration-derived
+  and does not represent provider inventory.
+- Added Operations Pulse and Recommended Next Steps panels using only available
+  local API/account signals.
+- Added dashboard refresh action, clearer monitoring/telemetry states, and
+  keyboard focus-visible styling across interactive controls.
+- Consolidated UI status language so unavailable monitoring, billing, and live
+  provider data are not presented as real-time telemetry.
 - Local architecture generation added from infrastructure configuration.
 - React Flow architecture builder added with pan, zoom, controls, minimap, and
   generated resource relationships.
@@ -80,10 +107,63 @@ Phase 14 - AWS read-only adapter.
   `CLOUDPILOT_PROVIDER_MODE=real`; it uses the default credential chain,
   optional profile, or optional IAM role assumption and never accepts secret
   keys through the API.
+- Azure read-only subscription adapter added using
+  `DefaultAzureCredential` and Azure Resource Manager.
+- GCP read-only project adapter added using application default credentials
+  and Cloud Resource Manager.
+- Provider capability contract added for regions, resource types, machine
+  types, and read permissions.
+- Account-scoped capability discovery endpoint added at
+  `/api/cloud-accounts/{id}/capabilities`.
+- Simulation mode returns deterministic local catalogs; real mode performs
+  provider API discovery and never falls back to simulation.
+- Versioned configuration schemas added for infrastructure templates.
+- Shared provider-aware validation now checks providers, regions, machine
+  types, CIDRs, subnet containment/overlap, VM counts, storage, and database
+  flags.
+- Template saving and deployment planning use the same validation service.
+- Provider-specific generated stacks now use native AWS, GCP, and AzureRM
+  network, compute, storage, and optional database resources.
+- AWS, GCP, and Azure generated stacks pass `terraform fmt` and
+  `terraform validate` after provider initialization, including optional
+  database resources.
+- Reusable AWS, GCP, and Azure stack modules added under `terraform/modules/`.
+- Legacy provider entrypoints now consume the corresponding reusable module
+  instead of containing provider-only smoke-test configuration.
+- Guarded Terraform plan endpoint added at `/api/terraform/plan`.
+- Plan execution requires `CLOUDPILOT_TERRAFORM_PLAN_ENABLED=true`, an
+  organization-owned account, matching provider, and successful real-mode
+  verification.
+- Plan execution uses a temporary generated stack, disables Terraform backend
+  initialization, disables refresh, never applies resources, and records
+  success/failure audit events.
+- Deployment responses now include ordered persisted lifecycle logs.
+- Authenticated deployment log endpoint supports cursor-based retrieval through
+  `/api/deployments/{id}/logs?after_id=...`.
+- Deployment history displays the latest lifecycle event beside each job status.
+- Added authenticated SSE endpoint at
+  `/api/deployments/{id}/logs/stream` with cursor resume support, keep-alives,
+  terminal completion events, and a bounded 30-second stream lifetime.
+- Added deployment-scoped `POST /api/deployments/{id}/terraform-plan`.
+- Terraform plan jobs require a real verified matching cloud account, persist
+  sanitized Terraform output as deployment logs, and transition through
+  `planning`, `plan-succeeded`, or `plan-failed`.
+- Terraform plan jobs remain plan-only; no apply or destroy path was added.
+- Authenticated deployment UI now shows **Real plan** only when a matching
+  real-verified account is available.
+- Frontend starts plan execution and SSE log streaming together, displaying
+  live sanitized Terraform output without changing simulation controls.
+- Real plan jobs now preflight account regions, machine types, and required
+  network/compute capabilities before Terraform starts.
+- Deployment history supports provider and status filters.
+- Cloud account cards show discovered region and machine-type coverage when
+  capability metadata is available.
+- Failed plan jobs expose a retry action when a matching real account remains
+  available; frontend errors are surfaced instead of silently swallowed.
 
 ## Test results
 
-- Python unit and API tests: `24 passed` with `python -m pytest -q`.
+- Python unit and API tests: `48 passed` with `python -m pytest -q`.
 - Frontend Vitest tests: `1 passed` with `npm test`.
 - Frontend production build: passed with `npm run build`.
 - Python compilation: passed with `python -m compileall -q backend core main.py`.
@@ -111,8 +191,16 @@ Phase 14 - AWS read-only adapter.
   connected.
 - Architecture diagrams are local configuration previews and simulated
   deployments do not represent real provider resources.
-- Generated Terraform is a preview and uses simplified provider resource
-  examples; it is not an authenticated provider plan.
+- Generated Terraform is provider-valid static HCL, but remains a preview and
+  is not an authenticated provider plan or apply.
+- Generated stacks require deployment-specific inputs such as AWS AMI IDs,
+  Azure SSH public keys, and database passwords; no secret placeholder
+  defaults are emitted.
+- Reusable provider modules currently cover network and compute foundations;
+  managed database resources remain in generated preview stacks until secret
+  injection and lifecycle policy are implemented.
+- Terraform plan execution is disabled unless explicitly enabled and has no
+  apply or destroy API.
 - Deployments are simulated only and do not create or modify cloud resources.
 - Admin analytics are local database metrics; platform billing and production
   monitoring integrations are not implemented.
@@ -128,5 +216,5 @@ Phase 14 - AWS read-only adapter.
 
 ## Next development gate
 
-Next phase: Azure Entra and GCP workload-identity read-only adapters, retaining
-simulation mode for credential-free testing.
+Next phase: responsive/accessibility polish and browser verification, retaining
+simulation mode and clear local-data labeling.

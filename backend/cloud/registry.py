@@ -1,7 +1,9 @@
 import os
 
 from .aws import AwsStsAdapter
+from .azure import AzureSubscriptionAdapter
 from .base import CloudProviderAdapter
+from .gcp import GcpProjectAdapter
 from .simulated import SimulatedProviderAdapter
 
 
@@ -31,10 +33,10 @@ def get_adapter(provider: str) -> CloudProviderAdapter:
     if os.getenv("CLOUDPILOT_PROVIDER_MODE", "simulated").strip().lower() == "real":
         if normalized == "aws":
             return AwsStsAdapter()
-        raise ValueError(
-            f"Real {normalized.upper()} verification is not configured; "
-            "use CLOUDPILOT_PROVIDER_MODE=simulated or configure its adapter"
-        )
+        if normalized == "azure":
+            return AzureSubscriptionAdapter()
+        if normalized == "gcp":
+            return GcpProjectAdapter()
     try:
         return _ADAPTERS[normalized]
     except KeyError as error:

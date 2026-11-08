@@ -49,7 +49,14 @@ export type CloudAccount = {
   provider: "aws" | "gcp" | "azure";
   display_name: string;
   status: string;
-  metadata: { account_identifier?: string; verified_at?: string; simulation?: boolean };
+  metadata: {
+    account_identifier?: string;
+    verified_at?: string;
+    simulation?: boolean;
+    regions?: string[];
+    machine_types?: string[];
+    capabilities?: string[];
+  };
 };
 
 export const getCloudAccounts = () =>
@@ -137,6 +144,7 @@ export type Deployment = {
   provider: string;
   configuration: Record<string, unknown>;
   resources: Array<{ name: string; type: string; provider_id: string }>;
+  logs: Array<{ id: string; message: string; level: string; created_at: string }>;
 };
 
 export const getDeployments = () =>
@@ -153,6 +161,48 @@ export const approveDeployment = (id: string) =>
 
 export const destroyDeployment = (id: string) =>
   request<{ status: string }>(`/api/deployments/${id}/destroy`, { method: "POST" });
+
+export const executeDeploymentTerraformPlan = (id: string, accountId: string) =>
+  request<{ mode: string; deployment_id: string; output: string }>(`/api/deployments/${id}/terraform-plan`, {
+    method: "POST",
+    body: JSON.stringify({ account_id: accountId }),
+  });
+
+export async function streamDeploymentLogs(
+  id: string,
+  onLog: (message: string) => void,
+  afterId?: string,
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/api/deployments/${id}/logs/stream${afterId ? `?after_id=${encodeURIComponent(afterId)}` : ""}`,
+    { credentials: "include", headers: { Accept: "text/event-stream" } },
+  );
+  if (!response.ok || !response.body) {
+    throw new Error("Unable to open deployment log stream");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buffer += decoder.decode(chunk.value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+    for (const event of events) {
+      const eventType = event.match(/^event: (\w+)/m)?.[1];
+      const data = event.match(/^data: (.*)$/m)?.[1];
+      if (eventType === "log" && data) {
+        onLog(JSON.parse(data).message);
+      }
+    }
+  }
+}
+
+export const getDeploymentLogs = (id: string, afterId?: string) =>
+  request<{ deployment_id: string; status: string; logs: Deployment["logs"] }>(
+    `/api/deployments/${id}/logs${afterId ? `?after_id=${encodeURIComponent(afterId)}` : ""}`,
+  );
 
 export type AdminOverview = {
   mode: string;

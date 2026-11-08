@@ -9,6 +9,7 @@ from .auth import get_current_user
 from .database import get_db
 from .authorization import organization_id_for_user
 from .models import InfrastructureConfiguration, InfrastructureTemplate, User
+from .templates.schemas import SCHEMA_VERSION, template_schema, validate_configuration
 
 
 router = APIRouter(prefix="/api/infrastructure", tags=["infrastructure"])
@@ -84,6 +85,8 @@ class ConfigurationRequest(BaseModel):
 
 def seed_templates(db: Session) -> None:
     for definition in TEMPLATES:
+        definition["schema_version"] = SCHEMA_VERSION
+        definition["configuration_schema"] = template_schema(definition["slug"])
         if not db.scalar(select(InfrastructureTemplate).where(InfrastructureTemplate.name == definition["name"])):
             db.add(InfrastructureTemplate(name=definition["name"], definition=definition))
     db.commit()
@@ -123,10 +126,14 @@ def save_configuration(
     provider = request.configuration.get("provider")
     if provider not in template["providers"]:
         raise HTTPException(status_code=422, detail="Selected provider is not supported by this template")
-    required = ("region", "vm_count", "vpc_cidr")
-    missing = [field for field in required if not request.configuration.get(field)]
-    if missing:
-        raise HTTPException(status_code=422, detail={"missing_fields": missing})
+    configuration = dict(request.configuration)
+    configuration.setdefault(
+        "machine_type",
+        {"aws": "t3.micro", "azure": "Standard_B1s", "gcp": "e2-medium"}[provider],
+    )
+    errors = validate_configuration(request.template_slug, configuration)
+    if errors:
+        raise HTTPException(status_code=422, detail={"errors": errors})
     organization_id = organization_id_for_user(db, user)
     template_row = db.scalar(
         select(InfrastructureTemplate).where(InfrastructureTemplate.name == template["name"])
@@ -134,7 +141,7 @@ def save_configuration(
     item = InfrastructureConfiguration(
         organization_id=organization_id,
         template_id=template_row.id if template_row else None,
-        configuration={"template_slug": request.template_slug, **request.configuration},
+        configuration={"template_slug": request.template_slug, **configuration},
     )
     db.add(item)
     db.commit()

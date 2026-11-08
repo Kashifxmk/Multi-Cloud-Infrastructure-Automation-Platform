@@ -1,3 +1,5 @@
+import pytest
+
 from backend.terraform_generator import generate_files, preview
 
 
@@ -14,6 +16,24 @@ def test_generates_provider_specific_files():
     assert set(files) == {"main.tf", "variables.tf", "outputs.tf", "terraform.tfvars.example"}
     assert 'provider "google"' in files["main.tf"]
     assert "count = var.vm_count" in files["main.tf"]
+    assert "network_cidr" not in files["main.tf"]
+    assert "google_compute_network" in files["main.tf"]
+
+
+@pytest.mark.parametrize(
+    ("provider", "resource"),
+    [
+        ("aws", 'resource "aws_vpc" "cloudpilot"'),
+        ("gcp", 'resource "google_compute_network" "cloudpilot"'),
+        ("azure", 'resource "azurerm_virtual_network" "cloudpilot"'),
+    ],
+)
+def test_generates_provider_native_network_resources(provider, resource):
+    files = generate_files({"provider": provider, "region": "test-region"})
+
+    assert resource in files["main.tf"]
+    assert "network_cidr" not in files["main.tf"]
+    assert "change-me-before-use" not in files["variables.tf"]
 
 
 def test_preview_is_explicitly_local():

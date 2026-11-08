@@ -12,7 +12,10 @@ from .auth import get_current_user
 from .database import get_db
 from .authorization import organization_id_for_user
 from .cloud.registry import SUPPORTED_PROVIDERS
-from .cloud.verification import verify_account as verify_provider_account
+from .cloud.verification import (
+    discover_capabilities,
+    verify_account as verify_provider_account,
+)
 from .models import CloudAccount, User
 
 
@@ -49,7 +52,7 @@ def serialize(account: CloudAccount) -> dict[str, Any]:
 @router.get("/setup")
 def setup_instructions():
     return {
-        "mode": "simulated",
+        "mode": os.getenv("CLOUDPILOT_PROVIDER_MODE", "simulated").strip().lower(),
         "providers": [
             {"provider": provider, "instructions": instructions}
             for provider, instructions in SETUP_INSTRUCTIONS.items()
@@ -63,7 +66,10 @@ def list_accounts(user: User = Depends(get_current_user), db: Session = Depends(
     accounts = db.scalars(
         select(CloudAccount).where(CloudAccount.organization_id == organization_id)
     ).all()
-    return {"mode": "simulated", "accounts": [serialize(account) for account in accounts]}
+    return {
+        "mode": os.getenv("CLOUDPILOT_PROVIDER_MODE", "simulated").strip().lower(),
+        "accounts": [serialize(account) for account in accounts],
+    }
 
 
 @router.post("", status_code=201)
@@ -104,7 +110,10 @@ def connect_account(
     db.add(account)
     db.commit()
     db.refresh(account)
-    return {"mode": "simulated", "account": serialize(account)}
+    return {
+        "mode": os.getenv("CLOUDPILOT_PROVIDER_MODE", "simulated").strip().lower(),
+        "account": serialize(account),
+    }
 
 
 @router.post("/{account_id}/verify")
@@ -144,10 +153,52 @@ def verify_account(
     }
     db.commit()
     return {
-        "mode": "simulated",
+        "mode": "simulated" if verification["simulation"] else "real",
         "status": account.status,
-        "message": "Simulated provider verification passed",
+        "message": (
+            "Simulated provider verification passed"
+            if verification["simulation"]
+            else "Provider verification passed"
+        ),
         "verification": verification,
+    }
+
+
+@router.get("/{account_id}/capabilities")
+def account_capabilities(
+    account_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    organization_id = organization_id_for_user(db, user)
+    account = db.scalar(
+        select(CloudAccount).where(
+            CloudAccount.id == account_id,
+            CloudAccount.organization_id == organization_id,
+        )
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Cloud account not found")
+    try:
+        capabilities = discover_capabilities(
+            account.provider,
+            str(account.metadata_json.get("account_identifier", "")),
+            account.metadata_json.get("auth_config", {}),
+        )
+    except (RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    account.metadata_json = {
+        **account.metadata_json,
+        "regions": capabilities["regions"],
+        "capabilities": capabilities["resource_types"],
+        "machine_types": capabilities["machine_types"],
+        "permissions": capabilities["permissions"],
+        "capabilities_checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+    db.commit()
+    return {
+        "mode": "simulated" if capabilities["simulation"] else "real",
+        **capabilities,
     }
 
 

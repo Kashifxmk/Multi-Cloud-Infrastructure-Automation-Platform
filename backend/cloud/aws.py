@@ -1,7 +1,7 @@
 import os
 from typing import Any
 
-from .base import VerificationResult
+from .base import CapabilityResult, VerificationResult
 
 
 class AwsStsAdapter:
@@ -57,5 +57,35 @@ class AwsStsAdapter:
             identity=account_id,
             regions=(region,),
             capabilities=("identity",),
+            simulated=False,
+        )
+
+    def capabilities(
+        self, account_identifier: str, auth_config: dict[str, str] | None = None
+    ) -> CapabilityResult:
+        config = auth_config or {}
+        region = config.get("region") or os.getenv("AWS_REGION") or "us-east-1"
+        try:
+            import boto3
+            from botocore.exceptions import BotoCoreError, ClientError
+        except ImportError as error:
+            raise RuntimeError("AWS capability discovery requires the boto3 package") from error
+        try:
+            session = boto3.Session(
+                region_name=region,
+                profile_name=config.get("profile") or os.getenv("AWS_PROFILE"),
+            )
+            regions = tuple(
+                item["RegionName"]
+                for item in session.client("ec2", region_name=region).describe_regions()["Regions"]
+            )
+        except (BotoCoreError, ClientError) as error:
+            raise RuntimeError("AWS capability discovery failed") from error
+        return CapabilityResult(
+            provider=self.provider,
+            regions=regions or (region,),
+            resource_types=("network", "compute", "storage", "database"),
+            machine_types=("t3.micro", "t3.medium", "m6i.large"),
+            permissions=("sts:GetCallerIdentity", "ec2:DescribeRegions", "ec2:DescribeInstanceTypes"),
             simulated=False,
         )
