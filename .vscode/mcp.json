@@ -1,12 +1,4 @@
 {
   "servers": {
-    "context-engine": {
-      "command": "C:\\Users\\91948\\AppData\\Local\\uv\\cache\\archive-v0\\cWtJzicY2KSUuYHZ\\Scripts\\cce.EXE",
-      "args": [
-        "serve",
-        "--project-dir",
-        "C:\\Users\\91948\\Desktop\\Innvative projects\\Multi-Cloud Infrastructure Automation Platform"
-      ]
-    }
   }
 }

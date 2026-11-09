@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, AlertTriangle, BarChart3, Bell, Boxes, CheckCircle2, ChevronLeft, ChevronRight, Cloud, Globe2, LayoutDashboard, Lightbulb, LogIn, Menu, Moon, RefreshCw, Search, Settings, ShieldCheck, Sun, UserPlus } from "lucide-react";
 import { approveDeployment, Architecture, comparePricing, connectCloudAccount, createDeploymentPlan, CurrentUser, destroyDeployment, disconnectCloudAccount, executeDeploymentTerraformPlan, generateArchitecture, generateTerraformPreview, getAdminAudit, getAdminOverview, getAdminUsers, getCloudAccounts, getCurrentUser, getDashboard, getDeployments, getTemplates, login, logout, register, saveInfrastructureConfiguration, streamDeploymentLogs, verifyCloudAccount, InfrastructureTemplate } from "./api";
@@ -10,7 +10,13 @@ function App() {
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const savedTheme = window.localStorage.getItem("cloudpilot-theme");
+    return savedTheme === "light" ? "light" : "dark";
+  });
+  useEffect(() => {
+    window.localStorage.setItem("cloudpilot-theme", theme);
+  }, [theme]);
   const queryClient = useQueryClient();
   const currentUser = useQuery({
     queryKey: ["current-user"],
@@ -57,7 +63,7 @@ function DashboardPage({
   theme: "dark" | "light";
   setTheme: (theme: "dark" | "light") => void;
 }) {
-  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: getDashboard });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: getDashboard, retry: 2 });
   const accounts = useQuery({ queryKey: ["cloud-accounts"], queryFn: getCloudAccounts });
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
@@ -82,24 +88,24 @@ function DashboardPage({
       <aside className={`${menuOpen ? "sidebar open" : "sidebar"}${sidebarCollapsed ? " collapsed" : ""}`}>
         <div className="brand"><span className="brand-mark">C</span> CloudPilot</div>
         <nav>
-          <a className="active"><LayoutDashboard size={18} /><span>Command Center</span></a>
-          <a onClick={() => user ? setDiscoveryOpen(true) : onAuth()}><Cloud size={18} /><span>Discovery</span></a>
-          <a onClick={() => setTemplatesOpen(true)}><Boxes size={18} /><span>Infrastructure</span></a>
-          <a onClick={() => setDeploymentsOpen(true)}><Activity size={18} /><span>Provisioning</span></a>
-          <a onClick={() => setTemplatesOpen(true)}><Boxes size={18} /><span>Templates</span></a>
-          <a onClick={() => setArchitectureOpen(true)}><ShieldCheck size={18} /><span>Architecture Builder</span></a>
-          <a onClick={() => setTerraformOpen(true)}><Settings size={18} /><span>Automation</span></a>
-          <a onClick={() => setDeploymentsOpen(true)}><Activity size={18} /><span>Monitoring</span></a>
-          <a onClick={() => setPricingOpen(true)}><BarChart3 size={18} /><span>FinOps</span></a>
-          {user?.is_admin && <a onClick={() => setAdminOpen(true)}><ShieldCheck size={18} /><span>Security & Policies</span></a>}
-          <a><Settings size={18} /><span>Settings</span></a>
+          <button type="button" className="nav-link active"><LayoutDashboard size={18} /><span>Command Center</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); user ? setDiscoveryOpen(true) : onAuth(); }}><Cloud size={18} /><span>Discovery</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setTemplatesOpen(true); }}><Boxes size={18} /><span>Infrastructure</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setDeploymentsOpen(true); }}><Activity size={18} /><span>Provisioning</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setTemplatesOpen(true); }}><Boxes size={18} /><span>Templates</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setArchitectureOpen(true); }}><ShieldCheck size={18} /><span>Architecture Builder</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setTerraformOpen(true); }}><Settings size={18} /><span>Automation</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setDeploymentsOpen(true); }}><Activity size={18} /><span>Monitoring</span></button>
+          <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setPricingOpen(true); }}><BarChart3 size={18} /><span>FinOps</span></button>
+          {user?.is_admin && <button type="button" className="nav-link" onClick={() => { setMenuOpen(false); setAdminOpen(true); }}><ShieldCheck size={18} /><span>Security & Policies</span></button>}
+          <button type="button" className="nav-link"><Settings size={18} /><span>Settings</span></button>
         </nav>
         <button className="sidebar-toggle" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} aria-label="Toggle sidebar">{sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
         <div className="sidebar-footer">LOCAL MVP<br /><span>No cloud account connected</span></div>
       </aside>
       <main className="content">
         <header className="topbar">
-          <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open menu"><Menu /></button>
+          <button className="icon-button mobile-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen}><Menu /></button>
           <div><p className="eyebrow">CLOUDPILOT / OPERATIONS</p><h1>Global Command Center</h1><p className="topbar-subtitle">Unified visibility and control across your cloud infrastructure.</p></div>
           <div className="top-actions"><label className="global-search"><Search size={16} /><input placeholder="Search resources..." aria-label="Search resources" /></label><button className="icon-button" aria-label="Refresh dashboard" onClick={refreshDashboard}><RefreshCw size={17} /></button><button className="icon-button" aria-label="Notifications"><Bell size={17} /></button><button className="icon-button" aria-label="Toggle theme" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}</button>{user ? <><span className="user-chip">{user.email}</span><button className="button secondary" onClick={onLogout}>Sign out</button></> : <button className="button secondary" onClick={onAuth}><LogIn size={16} /> Sign in</button>}</div>
         </header>
@@ -107,7 +113,7 @@ function DashboardPage({
           <div><p className="eyebrow">{user ? "LOCAL WORKSPACE" : "LOCAL DEMO ENVIRONMENT"}</p><h2>Infrastructure, without the guesswork.</h2><p>{user ? `Welcome back, ${user.full_name}. Your local workspace is ready.` : "Explore the CloudPilot workflow with safe local data. Sign in to save accounts and configurations."}</p></div>
           <div className="welcome-actions"><button className="button secondary" onClick={() => setTemplatesOpen(true)}><Boxes size={16} /> Browse templates</button><button className="button secondary" onClick={() => setPricingOpen(true)}><BarChart3 size={16} /> Compare costs</button><button className="button secondary" onClick={() => setArchitectureOpen(true)}><ShieldCheck size={16} /> Architecture</button><button className="button" onClick={() => user ? setAccountsOpen(true) : onAuth()}><Cloud size={16} /> {user ? "Connect account" : "Sign in to connect"}</button></div>
         </section>
-        {dashboard.isError && <div className="alert error">The API is unavailable. Start the backend with <code>python -m backend.run</code>.</div>}
+        {dashboard.isError && <div className="alert error">The API is unavailable. Start the backend with <code>python -m backend.run</code>.<button className="text-button compact" onClick={() => void dashboard.refetch()}>Retry connection</button></div>}
         <section className="command-filters"><span className="live-dot">LOCAL</span><span>Snapshot from local API</span><select aria-label="Environment"><option>All environments</option><option>Production</option><option>Staging</option></select><select aria-label="Region"><option>All regions</option></select><select aria-label="Time range"><option>Last 24 hours</option><option>Last 7 days</option></select></section>
         <section className="metrics">
           <Metric label="Infrastructure health" value="—" detail="Monitoring integration not connected" tone="info" />
@@ -152,7 +158,18 @@ function DashboardPage({
   );
 }
 
+function useModalEscape(onClose: () => void) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+}
+
 function DiscoveryModal({ accounts, onClose }: { accounts: Array<import("./api").CloudAccount>; onClose: () => void }) {
+  useModalEscape(onClose);
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState("all");
   const [selectedId, setSelectedId] = useState(accounts[0]?.id ?? "");
@@ -161,22 +178,24 @@ function DiscoveryModal({ accounts, onClose }: { accounts: Array<import("./api")
     return (provider === "all" || account.provider === provider) && text.includes(query.toLowerCase());
   });
   const selected = accounts.find((account) => account.id === selectedId) ?? filtered[0];
-  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide discovery-modal" onClick={(event) => event.stopPropagation()}>
-    <div className="panel-heading"><div><p className="eyebrow">RESOURCE DISCOVERY · CAPABILITY INVENTORY</p><h3>Cloud inventory</h3><p className="muted small">Verified account metadata only. Resource-level discovery is not connected.</p></div><button className="close-button" onClick={onClose}>×</button></div>
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide discovery-modal" role="dialog" aria-modal="true"   aria-label="Cloud inventory" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
+    <div className="panel-heading"><div><p className="eyebrow">RESOURCE DISCOVERY · CAPABILITY INVENTORY</p><h3 id="discovery-title">Cloud inventory</h3><p className="muted small">Verified account metadata only. Resource-level discovery is not connected.</p></div><button className="close-button" aria-label="Close cloud inventory" onClick={onClose}>×</button></div>
     <div className="discovery-toolbar"><label className="global-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search accounts or regions" aria-label="Search inventory" /></label><select value={provider} onChange={(event) => setProvider(event.target.value)} aria-label="Filter provider"><option value="all">All providers</option><option value="aws">AWS</option><option value="azure">Azure</option><option value="gcp">GCP</option></select></div>
     {filtered.length ? <div className="inventory-layout"><div className="inventory-table"><div className="inventory-head"><span>Account</span><span>Provider</span><span>Regions</span><span>Status</span></div>{filtered.map((account) => <button className={`inventory-row${selected?.id === account.id ? " selected" : ""}`} key={account.id} onClick={() => setSelectedId(account.id)}><strong>{account.display_name}</strong><span className={`provider-label ${account.provider}`}>{account.provider.toUpperCase()}</span><span>{account.metadata.regions?.length ?? 0} discovered</span><span className={`inventory-status ${account.status}`}>{account.status}</span></button>)}</div><aside className="inventory-detail">{selected ? <><div className="detail-icon"><Globe2 size={20} /></div><h4>{selected.display_name}</h4><p className="muted small">{selected.provider.toUpperCase()} · {selected.metadata.account_identifier ?? "Identifier unavailable"}</p><div className="detail-section"><span>Verification</span><strong>{selected.metadata.verified_at ? "Verified" : "Not verified"}</strong></div><div className="detail-section"><span>Regions</span><div className="chip-list">{(selected.metadata.regions ?? []).map((region) => <span key={region}>{region}</span>)}</div></div><div className="detail-section"><span>Capabilities</span><div className="chip-list">{(selected.metadata.capabilities ?? []).map((capability) => <span key={capability}>{capability}</span>)}</div></div><div className="detail-section"><span>Machine types</span><div className="chip-list">{(selected.metadata.machine_types ?? []).map((machine) => <span key={machine}>{machine}</span>)}</div></div></> : <div className="empty-account">Select an account.</div>}</aside></div> : <div className="discovery-empty"><Globe2 size={30} /><strong>No discovered accounts</strong><span>Connect and verify a cloud account to populate this inventory.</span></div>}
   </div></div>;
 }
 
 function AdminModal({ onClose }: { onClose: () => void }) {
+  useModalEscape(onClose);
   const overview = useQuery({ queryKey: ["admin-overview"], queryFn: getAdminOverview });
   const users = useQuery({ queryKey: ["admin-users"], queryFn: getAdminUsers });
   const audit = useQuery({ queryKey: ["admin-audit"], queryFn: getAdminAudit });
   const metrics = overview.data?.metrics ?? {};
-  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide" onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">ADMIN CONSOLE · LOCAL</p><h3>Platform overview</h3><p className="muted small">Backend-authorized analytics for this local instance.</p></div><button className="close-button" onClick={onClose}>×</button></div>{overview.isError ? <div className="alert error">Administrator access is required.</div> : <><div className="admin-metrics">{Object.entries(metrics).map(([key, value]) => <div className="admin-metric" key={key}><span>{key.replace(/_/g, " ")}</span><strong>{value}</strong></div>)}</div><div className="admin-section"><h4>Users</h4>{users.data?.users.map((user) => <div className="admin-row" key={user.id}><span><strong>{user.full_name}</strong> · {user.email}</span><small>{user.is_admin ? "Admin" : "Member"} · {user.is_active ? "Active" : "Inactive"}</small></div>)}</div><div className="admin-section"><h4>Audit log</h4>{audit.data?.audit_logs.length ? audit.data.audit_logs.map((entry) => <div className="admin-row" key={entry.id}><span>{entry.action}</span><small>{String(entry.created_at ?? "")}</small></div>) : <p className="muted small">No audit events recorded yet.</p>}</div></>}</div></div>;
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide" role="dialog" aria-modal="true"   aria-label="Platform overview" tabIndex={-1} onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">ADMIN CONSOLE · LOCAL</p><h3 id="admin-title">Platform overview</h3><p className="muted small">Backend-authorized analytics for this local instance.</p></div><button className="close-button" onClick={onClose}>×</button></div>{overview.isError ? <div className="alert error">Administrator access is required.</div> : <><div className="admin-metrics">{Object.entries(metrics).map(([key, value]) => <div className="admin-metric" key={key}><span>{key.replace(/_/g, " ")}</span><strong>{value}</strong></div>)}</div><div className="admin-section"><h4>Users</h4>{users.data?.users.map((user) => <div className="admin-row" key={user.id}><span><strong>{user.full_name}</strong> · {user.email}</span><small>{user.is_admin ? "Admin" : "Member"} · {user.is_active ? "Active" : "Inactive"}</small></div>)}</div><div className="admin-section"><h4>Audit log</h4>{audit.data?.audit_logs.length ? audit.data.audit_logs.map((entry) => <div className="admin-row" key={entry.id}><span>{entry.action}</span><small>{String(entry.created_at ?? "")}</small></div>) : <p className="muted small">No audit events recorded yet.</p>}</div></>}</div></div>;
 }
 
 function DeploymentsModal({ user, accounts, onAuth, onClose }: { user: CurrentUser | null; accounts: Array<import("./api").CloudAccount>; onAuth: () => void; onClose: () => void }) {
+  useModalEscape(onClose);
   const deployments = useQuery({ queryKey: ["deployments"], queryFn: getDeployments, enabled: Boolean(user) });
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
@@ -226,20 +245,22 @@ function DeploymentsModal({ user, accounts, onAuth, onClose }: { user: CurrentUs
       deployments.refetch();
     } finally { setWorking(false); }
   }
-  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide" onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">DEPLOYMENTS · SIMULATION</p><h3>Deployment history</h3><p className="muted small">Local lifecycle only. No provider credentials or resources are used.</p></div><button className="close-button" onClick={onClose}>×</button></div>{message && <div className="alert success">{message}</div>}{!user ? <div className="empty-chart architecture-empty"><Boxes size={40} /><strong>Sign in to manage deployments</strong><span>Deployment history is scoped to your local workspace.</span><button className="button" onClick={onAuth}>Sign in</button></div> : <><div className="deployment-toolbar"><button className="button" disabled={working} onClick={simulatePlan}>Create simulated plan</button><select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)}><option value="all">All providers</option><option value="aws">AWS</option><option value="gcp">GCP</option><option value="azure">Azure</option></select><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="awaiting-approval">Awaiting approval</option><option value="planning">Planning</option><option value="plan-succeeded">Plan succeeded</option><option value="plan-failed">Plan failed</option><option value="successful-simulated">Simulated success</option></select></div><div className="deployment-list">{visibleDeployments.map((deployment) => <div className="deployment-row" key={deployment.id}><div><strong>{String(deployment.configuration.name ?? "CloudPilot deployment")}</strong><span>{deployment.provider.toUpperCase()} · {deployment.resources.length} resources</span><small>{deployment.logs.length ? deployment.logs[deployment.logs.length - 1].message : "No deployment events yet."}</small></div><span className={`deployment-status ${deployment.status}`}>{deployment.status}</span>{deployment.status === "awaiting-approval" && <button className="text-button compact" onClick={() => approve(deployment.id)}>Approve</button>}{deployment.status === "awaiting-approval" && realAccounts.some((account) => account.provider === deployment.provider) && <button className="text-button compact" disabled={working} onClick={() => runTerraformPlan(deployment.id, deployment.provider)}>Real plan</button>}{deployment.status === "plan-failed" && realAccounts.some((account) => account.provider === deployment.provider) && <button className="text-button compact" disabled={working} onClick={() => runTerraformPlan(deployment.id, deployment.provider)}>Retry plan</button>}{deployment.status === "successful-simulated" && <button className="text-button compact danger" onClick={() => destroy(deployment.id)}>Destroy</button>}</div>)}{(!deployments.data || visibleDeployments.length === 0) && <div className="empty-account">No deployments match selected filters.</div>}</div>{liveOutput.length > 0 && <pre className="terraform-output">{liveOutput.join("\n")}</pre>}</>}</div></div>;
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide" role="dialog" aria-modal="true"   aria-label="Deployment history" tabIndex={-1} onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">DEPLOYMENTS · SIMULATION</p><h3>Deployment history</h3><p className="muted small">Local lifecycle only. No provider credentials or resources are used.</p></div><button className="close-button" onClick={onClose}>×</button></div>{message && <div className="alert success">{message}</div>}{!user ? <div className="empty-chart architecture-empty"><Boxes size={40} /><strong>Sign in to manage deployments</strong><span>Deployment history is scoped to your local workspace.</span><button className="button" onClick={onAuth}>Sign in</button></div> : <><div className="deployment-toolbar"><button className="button" disabled={working} onClick={simulatePlan}>Create simulated plan</button><select value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)}><option value="all">All providers</option><option value="aws">AWS</option><option value="gcp">GCP</option><option value="azure">Azure</option></select><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="awaiting-approval">Awaiting approval</option><option value="planning">Planning</option><option value="plan-succeeded">Plan succeeded</option><option value="plan-failed">Plan failed</option><option value="successful-simulated">Simulated success</option></select></div><div className="deployment-list">{visibleDeployments.map((deployment) => <div className="deployment-row" key={deployment.id}><div><strong>{String(deployment.configuration.name ?? "CloudPilot deployment")}</strong><span>{deployment.provider.toUpperCase()} · {deployment.resources.length} resources</span><small>{deployment.logs.length ? deployment.logs[deployment.logs.length - 1].message : "No deployment events yet."}</small></div><span className={`deployment-status ${deployment.status}`}>{deployment.status}</span>{deployment.status === "awaiting-approval" && <button className="text-button compact" onClick={() => approve(deployment.id)}>Approve</button>}{deployment.status === "awaiting-approval" && realAccounts.some((account) => account.provider === deployment.provider) && <button className="text-button compact" disabled={working} onClick={() => runTerraformPlan(deployment.id, deployment.provider)}>Real plan</button>}{deployment.status === "plan-failed" && realAccounts.some((account) => account.provider === deployment.provider) && <button className="text-button compact" disabled={working} onClick={() => runTerraformPlan(deployment.id, deployment.provider)}>Retry plan</button>}{deployment.status === "successful-simulated" && <button className="text-button compact danger" onClick={() => destroy(deployment.id)}>Destroy</button>}</div>)}{(!deployments.data || visibleDeployments.length === 0) && <div className="empty-account">No deployments match selected filters.</div>}</div>{liveOutput.length > 0 && <pre className="terraform-output">{liveOutput.join("\n")}</pre>}</>}</div></div>;
 }
 
 function TerraformModal({ onClose }: { onClose: () => void }) {
+  useModalEscape(onClose);
   const [provider, setProvider] = useState("gcp");
   const [preview, setPreview] = useState<Awaited<ReturnType<typeof generateTerraformPreview>> | null>(null);
   const [selectedFile, setSelectedFile] = useState("main.tf");
   async function generate() {
     setPreview(await generateTerraformPreview({ provider, region: provider === "aws" ? "ap-south-1" : provider === "azure" ? "Central India" : "asia-south1", vm_count: 2, machine_type: provider === "aws" ? "t3.micro" : provider === "azure" ? "Standard_B1s" : "e2-medium", vpc_cidr: "10.0.0.0/16" }));
   }
-  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide terraform-modal" onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">TERRAFORM GENERATOR · LOCAL</p><h3>Configuration preview</h3><p className="muted small">Generated files are static previews. No provider plan, init, or apply is executed.</p></div><button className="close-button" onClick={onClose}>×</button></div><div className="terraform-toolbar"><select value={provider} onChange={(event) => setProvider(event.target.value)}><option value="aws">AWS</option><option value="gcp">GCP</option><option value="azure">Azure</option></select><button className="button" onClick={generate}>Generate Terraform</button></div>{preview ? <div className="terraform-preview"><div className="file-tabs">{Object.keys(preview.files).map((file) => <button className={selectedFile === file ? "file-tab active" : "file-tab"} key={file} onClick={() => setSelectedFile(file)}>{file}</button>)}</div><pre>{preview.files[selectedFile]}</pre><div className="alert success">{preview.message}</div></div> : <div className="empty-chart architecture-empty"><Settings size={40} /><strong>Generate provider-specific files</strong><span>Choose a provider to preview main.tf, variables.tf, outputs.tf, and tfvars.</span><button className="button secondary" onClick={generate}>Generate local files</button></div>}</div></div>;
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal wide terraform-modal" role="dialog" aria-modal="true"   aria-label="Terraform configuration preview" tabIndex={-1} onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">TERRAFORM GENERATOR · LOCAL</p><h3>Configuration preview</h3><p className="muted small">Generated files are static previews. No provider plan, init, or apply is executed.</p></div><button className="close-button" onClick={onClose}>×</button></div><div className="terraform-toolbar"><select value={provider} onChange={(event) => setProvider(event.target.value)}><option value="aws">AWS</option><option value="gcp">GCP</option><option value="azure">Azure</option></select><button className="button" onClick={generate}>Generate Terraform</button></div>{preview ? <div className="terraform-preview"><div className="file-tabs">{Object.keys(preview.files).map((file) => <button className={selectedFile === file ? "file-tab active" : "file-tab"} key={file} onClick={() => setSelectedFile(file)}>{file}</button>)}</div><pre>{preview.files[selectedFile]}</pre><div className="alert success">{preview.message}</div></div> : <div className="empty-chart architecture-empty"><Settings size={40} /><strong>Generate provider-specific files</strong><span>Choose a provider to preview main.tf, variables.tf, outputs.tf, and tfvars.</span><button className="button secondary" onClick={generate}>Generate local files</button></div>}</div></div>;
 }
 
 function ArchitectureModal({ onClose }: { onClose: () => void }) {
+  useModalEscape(onClose);
   const [vmCount, setVmCount] = useState(2);
   const [database, setDatabase] = useState(true);
   const [architecture, setArchitecture] = useState<Architecture | null>(null);
@@ -257,10 +278,11 @@ function ArchitectureModal({ onClose }: { onClose: () => void }) {
   }
   const nodes: Node[] = (architecture?.nodes ?? []).map((node, index) => ({ id: node.id, position: { x: (index % 4) * 190 + 30, y: Math.floor(index / 4) * 125 + 30 }, data: { label: <div><strong>{node.label}</strong><small>{node.type}</small></div> }, className: `topology-node topology-${node.type}`, type: "default" }));
   const edges: Edge[] = (architecture?.edges ?? []).map((edge, index) => ({ id: `edge-${index}`, source: edge.source, target: edge.target, animated: true }));
-  return <div className="modal-backdrop" onClick={onClose}><div className="modal architecture-modal" onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">TOPOLOGY BUILDER · LOCAL PREVIEW</p><h3>Infrastructure architecture</h3><p className="muted small">Generated topology only. No resources exist in a cloud account.</p></div><button className="close-button" onClick={onClose}>×</button></div><div className="architecture-controls"><label>VM count<input type="number" min="1" max="20" value={vmCount} onChange={(event) => setVmCount(Math.max(1, Number(event.target.value)))} /></label><label className="checkbox"><input type="checkbox" checked={database} onChange={(event) => setDatabase(event.target.checked)} /> Include database</label><button className="button" onClick={generate}>Generate topology</button></div>{error && <div className="alert error">{error}</div>}{architecture ? <><div className="topology-meta"><span><strong>{architecture.nodes.length}</strong> components</span><span><strong>{architecture.edges.length}</strong> connections</span><span className="topology-legend"><i className="legend-network" /> Network <i className="legend-compute" /> Compute <i className="legend-data" /> Data</span></div><div className="topology-workspace"><div className="flow-canvas"><ReactFlow nodes={nodes} edges={edges} fitView onNodeClick={(_, node) => setSelectedNode(architecture.nodes.find((item) => item.id === node.id) ?? null)}><Background /><Controls /><MiniMap /></ReactFlow></div><aside className="topology-inspector">{selectedNode ? <><span className="inspector-kicker">SELECTED COMPONENT</span><h4>{selectedNode.label}</h4><span className="node-type">{selectedNode.type}</span><div className="inspector-details">{Object.entries(selectedNode.details).map(([key, value]) => <div key={key}><span>{key.replace(/_/g, " ")}</span><strong>{String(value)}</strong></div>)}</div></> : <div className="empty-account">Select a component to inspect it.</div>}</aside></div></> : <div className="empty-chart architecture-empty"><ShieldCheck size={40} /><strong>Generate your architecture</strong><span>Nodes and relationships will reflect your selected configuration.</span><button className="button secondary" onClick={generate}>Generate local topology</button></div>}</div></div>;
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal architecture-modal" role="dialog" aria-modal="true"   aria-label="Infrastructure architecture" tabIndex={-1} onClick={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">TOPOLOGY BUILDER · LOCAL PREVIEW</p><h3>Infrastructure architecture</h3><p className="muted small">Generated topology only. No resources exist in a cloud account.</p></div><button className="close-button" onClick={onClose}>×</button></div><div className="architecture-controls"><label>VM count<input type="number" min="1" max="20" value={vmCount} onChange={(event) => setVmCount(Math.max(1, Number(event.target.value)))} /></label><label className="checkbox"><input type="checkbox" checked={database} onChange={(event) => setDatabase(event.target.checked)} /> Include database</label><button className="button" onClick={generate}>Generate topology</button></div>{error && <div className="alert error">{error}</div>}{architecture ? <><div className="topology-meta"><span><strong>{architecture.nodes.length}</strong> components</span><span><strong>{architecture.edges.length}</strong> connections</span><span className="topology-legend"><i className="legend-network" /> Network <i className="legend-compute" /> Compute <i className="legend-data" /> Data</span></div><div className="topology-workspace"><div className="flow-canvas"><ReactFlow nodes={nodes} edges={edges} fitView onNodeClick={(_, node) => setSelectedNode(architecture.nodes.find((item) => item.id === node.id) ?? null)}><Background /><Controls /><MiniMap /></ReactFlow></div><aside className="topology-inspector">{selectedNode ? <><span className="inspector-kicker">SELECTED COMPONENT</span><h4>{selectedNode.label}</h4><span className="node-type">{selectedNode.type}</span><div className="inspector-details">{Object.entries(selectedNode.details).map(([key, value]) => <div key={key}><span>{key.replace(/_/g, " ")}</span><strong>{String(value)}</strong></div>)}</div></> : <div className="empty-account">Select a component to inspect it.</div>}</aside></div></> : <div className="empty-chart architecture-empty"><ShieldCheck size={40} /><strong>Generate your architecture</strong><span>Nodes and relationships will reflect your selected configuration.</span><button className="button secondary" onClick={generate}>Generate local topology</button></div>}</div></div>;
 }
 
 function PricingModal({ onClose }: { onClose: () => void }) {
+  useModalEscape(onClose);
   const [vmCount, setVmCount] = useState(2);
   const [storageGb, setStorageGb] = useState(100);
   const [database, setDatabase] = useState(true);
@@ -279,6 +301,7 @@ function PricingModal({ onClose }: { onClose: () => void }) {
 }
 
 function TemplateWizard({ templates, onClose }: { templates: InfrastructureTemplate[]; onClose: () => void }) {
+  useModalEscape(onClose);
   const [selected, setSelected] = useState<InfrastructureTemplate | null>(null);
   const [templateQuery, setTemplateQuery] = useState("");
   const [category, setCategory] = useState("all");
