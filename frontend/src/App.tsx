@@ -124,6 +124,24 @@ function DashboardPage({
         <section className="provider-grid">
           {["aws", "azure", "gcp"].map((item) => { const connected = accounts.data?.accounts.filter((account) => account.provider === item) ?? []; return <div className="provider-card" key={item}><div className={`provider-logo ${item}`}>{item === "aws" ? "AWS" : item === "azure" ? "AZ" : "GCP"}</div><div className="provider-card-main"><strong>{item.toUpperCase()}</strong><span>{connected.length ? `${connected.length} connected account${connected.length === 1 ? "" : "s"}` : "Not connected"}</span></div><span className={`status-pill ${connected.length ? "healthy" : "neutral"}`}>{connected.length ? "Connected" : "Demo"}</span><small>{connected[0]?.metadata.regions?.[0] ?? "No region synchronized"} · {connected[0]?.metadata.verified_at ? "Verified" : "Awaiting verification"}</small></div>; })}
         </section>
+        <section className="visualization-grid">
+          <div className="panel activity-chart">
+            <div className="panel-heading"><div><h3>Workspace activity</h3><p>Current local snapshot by resource category</p></div><span className="status-pill neutral">LOCAL</span></div>
+            <div className="bar-chart" aria-label="Workspace activity visualization">
+              {[
+                ["Accounts", connectedAccounts],
+                ["Deployments", metrics?.deployments ?? 0],
+                ["Workloads", metrics?.active_resources ?? 0],
+              ].map(([label, value]) => <div className="bar-row" key={label}><div className="bar-label"><span>{label}</span><strong>{value}</strong></div><div className="bar-track"><span style={{ width: `${Math.min(100, Number(value) * 10)}%` }} /></div></div>)}
+            </div>
+          </div>
+          <div className="panel snapshot-card">
+            <div className="panel-heading"><div><h3>Readiness snapshot</h3><p>Signals available in this workspace</p></div><CheckCircle2 size={18} className="recommendation-icon" /></div>
+            <div className="snapshot-score"><strong>{connectedAccounts ? "Ready" : "Explore"}</strong><span>{connectedAccounts ? "Provider metadata is available" : "Connect an account to unlock provider context"}</span></div>
+            <div className="snapshot-progress"><span style={{ width: `${connectedAccounts ? 66 : 22}%` }} /></div>
+            <div className="snapshot-legend"><span><i className="legend-dot ready" /> API connected</span><span><i className="legend-dot pending" /> Cloud telemetry pending</span></div>
+          </div>
+        </section>
         <section className="ops-grid">
           <div className="panel">
             <div className="panel-heading"><div><h3>Operations pulse</h3><p>Signals available from this local workspace</p></div><span className="demo-tag">LOCAL SIGNALS</span></div>
